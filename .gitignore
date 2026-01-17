@@ -1,0 +1,13 @@
+# Build results
+bin/
+obj/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio cache/options
+.vs/
+
+# cTrader specific
+*.algo
