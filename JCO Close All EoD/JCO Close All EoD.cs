@@ -1,6 +1,28 @@
-// JCO Close All EoD - version 1.0
-// Ferme tous les trades et ordres en attente à 16:50 (4:50 PM) Eastern Time
-// Gère automatiquement le changement d'heure été/hiver
+// -------------------------------------------------------------------------------------------------
+//
+//    JCO Close All EoD - End of Day Position Closer for cTrader
+//
+//    This cBot automatically closes all open positions and cancels all pending orders
+//    at a specified time each day. It handles Daylight Saving Time (DST) automatically
+//    and sends Telegram alerts before and after execution.
+//
+//    Features:
+//    - Automatic closing of all positions at configured time
+//    - Automatic cancellation of all pending orders
+//    - DST (Daylight Saving Time) automatic management
+//    - Telegram alerts (preventive + result summary)
+//    - Multi-symbol support (closes all trades on the account)
+//    - Detailed logging with P&L total
+//
+//    Usage: Run on M5 timeframe or lower for accurate time detection
+//
+//    Author: J. Cornier
+//    Version: 1.0
+//    Last Updated: 2026-01-17
+//
+//    GitHub: https://github.com/jcornierfra/cTrader-Bot-JCO-Close-All-EoD
+//
+// -------------------------------------------------------------------------------------------------
 
 using System;
 using System.Linq;
