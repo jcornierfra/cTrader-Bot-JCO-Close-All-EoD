@@ -11,14 +11,20 @@
 //    - Automatic cancellation of all pending orders
 //    - DST (Daylight Saving Time) automatic management
 //    - Telegram alerts (preventive + result summary)
+//    - Customizable alert name for Telegram messages
+//    - Test alert on startup to verify Telegram connection
 //    - Multi-symbol support (closes all trades on the account)
 //    - Detailed logging with P&L total
 //
 //    Usage: Run on M5 timeframe or lower for accurate time detection
 //
 //    Author: J. Cornier
-//    Version: 1.0
-//    Last Updated: 2026-01-17
+//    Version: 1.1
+//    Last Updated: 2026-01-18
+//
+//    Changelog:
+//    - v1.1: Added customizable Telegram alert name, added test alert on startup
+//    - v1.0: Initial release
 //
 //    GitHub: https://github.com/jcornierfra/cTrader-Bot-JCO-Close-All-EoD
 //
@@ -67,6 +73,13 @@ namespace cAlgo.Robots
         [Parameter("Alerte avant fermeture (minutes)", DefaultValue = 10, MinValue = 1, MaxValue = 60, Group = "Telegram Alert")]
         public int AlertBeforeClosingMinutes { get; set; }
 
+        [Parameter("Nom affiché dans les alertes", DefaultValue = "JCO Close All EoD", Group = "Telegram Alert")]
+        public string TelegramAlertName { get; set; }
+
+        // Paramètres Test
+        [Parameter("Envoyer alerte test au démarrage", DefaultValue = false, Group = "Test")]
+        public bool SendTestAlertOnStart { get; set; }
+
         // Variables privées
         private TimeZoneInfo targetTimeZone;
         private DateTime lastClosingDate = DateTime.MinValue;
@@ -99,6 +112,31 @@ namespace cAlgo.Robots
             }
 
             Print("═══════════════════════════════════════════════");
+
+            // Envoyer alerte test si activé
+            if (SendTestAlertOnStart)
+            {
+                SendTestAlert();
+            }
+        }
+
+        private void SendTestAlert()
+        {
+            DateTime currentTime = GetCurrentTimeInTargetTimezone();
+
+            string message = $"🧪 *{TelegramAlertName} - Test de connexion*\n\n";
+            message += $"✅ Le cBot est bien connecté à Telegram !\n\n";
+            message += $"📊 Configuration actuelle:\n";
+            message += $"   • Fuseau horaire: {targetTimeZone.Id}\n";
+            message += $"   • Heure de fermeture: {CloseHour:D2}:{CloseMinutes:D2}\n";
+            message += $"   • Alerte préventive: {AlertBeforeClosingMinutes} min avant\n";
+            message += $"   • Heure actuelle: {currentTime:HH:mm:ss}\n";
+            message += $"   • DST: {(targetTimeZone.IsDaylightSavingTime(currentTime) ? "Heure d'été" : "Heure standard")}\n\n";
+            message += $"💡 _Désactivez ce test une fois validé_";
+
+            SendTelegramMessage(message);
+
+            Print("📧 Alerte test envoyée à Telegram");
         }
 
         private void InitializeTimeZone()
@@ -201,7 +239,7 @@ namespace cAlgo.Robots
             int positionsCount = Positions.Count;
             int pendingOrdersCount = PendingOrders.Count;
 
-            string message = $"🤖 *JCO Close All EoD - Alerte Opérationnelle*\n\n";
+            string message = $"🤖 *{TelegramAlertName} - Alerte Opérationnelle*\n\n";
             message += $"✅ Le cBot est opérationnel\n";
             message += $"⏰ Fermeture prévue dans {AlertBeforeClosingMinutes} minutes à {CloseHour:D2}:{CloseMinutes:D2} ET\n\n";
             message += $"📊 État actuel du compte:\n";
@@ -367,7 +405,7 @@ namespace cAlgo.Robots
 
         private void SendClosingResultAlert(DateTime closingTime, int positionsClosed, int ordersCancelled, double totalPnL)
         {
-            string message = $"🔒 *JCO Close All EoD - Résultat d'Exécution*\n\n";
+            string message = $"🔒 *{TelegramAlertName} - Résultat d'Exécution*\n\n";
             message += $"⏰ Fermeture effectuée à {closingTime:HH:mm:ss} ET\n";
             message += $"📅 Date: {closingTime:yyyy-MM-dd}\n\n";
 
