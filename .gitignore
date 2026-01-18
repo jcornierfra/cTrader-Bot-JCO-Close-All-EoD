@@ -11,3 +11,8 @@ obj/
 
 # cTrader specific
 *.algo
+
+# Environment files (contains sensitive data like API keys)
+.env
+.env.*
+!.env.example
