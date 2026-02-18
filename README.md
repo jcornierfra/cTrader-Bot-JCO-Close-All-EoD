@@ -9,27 +9,38 @@
 - ✅ **Fermeture automatique** de toutes les positions à l'heure configurée
 - ✅ **Annulation automatique** de tous les ordres en attente
 - ✅ **Gestion automatique DST** (changement d'heure été/hiver)
+- ✅ **Vérification post-fermeture + retry automatique** : si le broker refuse une fermeture, le bot réessaie automatiquement après 1 minute
 - ✅ **Alertes Telegram** :
   - Alerte préventive X minutes avant la fermeture
-  - Alerte de résultat après l'exécution
+  - Alerte de résultat après l'exécution (succès complet ou positions restantes)
+- ✅ **Nom personnalisable** dans les alertes Telegram
+- ✅ **Alerte test au démarrage** pour valider la connexion Telegram
 - ✅ **Multi-symboles** : ferme tous les trades du compte, peu importe le symbole
 - ✅ **Logs détaillés** avec P&L total
 
 ## ⚙️ Paramètres
 
 ### General
+
 - **Fuseau Horaire** : Fuseau horaire de référence (par défaut : Eastern Standard Time)
 - **Activer messages détaillés** : Active/désactive les logs verbeux
 
 ### Closing Time
+
 - **Heure de fermeture - Heure** : Heure de fermeture (par défaut : 16h)
 - **Heure de fermeture - Minutes** : Minutes de fermeture (par défaut : 50)
 
 ### Telegram Alert
+
 - **Activer Telegram** : Active/désactive les alertes Telegram
 - **Bot Token** : Token de votre bot Telegram
 - **Chat ID** : Votre ID de chat Telegram
 - **Alerte avant fermeture** : Minutes avant fermeture pour l'alerte préventive (par défaut : 10)
+- **Nom affiché dans les alertes** : Nom personnalisé dans les messages Telegram (par défaut : JCO Close All EoD)
+
+### Test
+
+- **Envoyer alerte test au démarrage** : Envoie un message Telegram au lancement pour valider la connexion
 
 ## 🚀 Installation
 
@@ -55,13 +66,23 @@ Pour recevoir les alertes Telegram :
 ### ⏰ Fenêtre de détection
 
 Le cBot vérifie l'heure à chaque nouvelle bougie et utilise une fenêtre de 2 minutes pour capturer l'événement :
+
 - Si fermeture configurée à **16h50**
 - Détection entre **16h50 et 16h52**
+
+### 🔄 Mécanisme de retry
+
+Si le broker refuse une fermeture (ex. marché fermé, requête rejetée) :
+
+1. Le bot détecte les positions encore ouvertes après la 1ère tentative
+2. Il attend **1 minute** et relance automatiquement la fermeture
+3. Le rapport final indique le résultat des 2 tentatives cumulées
 
 ## 📊 Exemples de messages
 
 ### Alerte préventive (10 min avant)
-```
+
+```text
 🤖 JCO Close All EoD - Alerte Opérationnelle
 
 ✅ Le cBot est opérationnel
@@ -74,20 +95,46 @@ Le cBot vérifie l'heure à chaque nouvelle bougie et utilise une fenêtre de 2 
    • DST: Heure d'été
 ```
 
-### Alerte de résultat
-```
+### Alerte de résultat — Succès complet
+
+```text
 🔒 JCO Close All EoD - Résultat d'Exécution
 
 ⏰ Fermeture effectuée à 16:50:05 ET
-📅 Date: 2025-02-06
+📅 Date: 2026-02-18
 
 📊 Actions effectuées:
    💰 3 position(s) fermée(s)
    • P&L Total: +125.50 USD
    🚫 2 ordre(s) annulé(s)
 
+✅ Toutes les positions ont été clôturées
+
 ⏭️ Prochaine fermeture:
-   2025-02-07 à 16:50 ET
+   2026-02-19 à 16:50 ET
+```
+
+### Alerte de résultat — Positions restantes après retry
+
+```text
+⚠️ JCO Close All EoD - Résultat d'Exécution
+
+⏰ Fermeture effectuée à 16:50:05 ET
+📅 Date: 2026-02-18
+🔄 Rapport après 2ème tentative
+
+📊 Actions effectuées:
+   💰 2 position(s) fermée(s)
+   • P&L Total: +80.00 USD
+   🚫 1 ordre(s) annulé(s)
+
+🚨 ATTENTION - Positions non clôturées:
+   • Positions encore ouvertes: 1
+   • Ordres encore en attente: 0
+   ⚠️ Vérifiez votre compte manuellement
+
+⏭️ Prochaine fermeture:
+   2026-02-19 à 16:50 ET
 ```
 
 ## ⚠️ Important
@@ -96,9 +143,21 @@ Le cBot vérifie l'heure à chaque nouvelle bougie et utilise une fenêtre de 2 
 - La détection de l'heure dépend de la fréquence des bougies
 - Testez d'abord en compte démo !
 
-## 📝 Version
+## 📝 Changelog
 
-**Version 1.0**
+### Version 1.2 _(2026-02-18)_
+
+- Vérification post-fermeture : contrôle que toutes les positions ont bien été clôturées
+- Retry automatique après 1 minute en cas de refus du broker
+- Rapport final enrichi : succès complet ou positions restantes avec alerte manuelle
+
+### Version 1.1 _(2026-01-18)_
+
+- Nom personnalisable dans les alertes Telegram
+- Alerte test au démarrage pour valider la connexion Telegram
+
+### Version 1.0
+
 - Fermeture automatique à heure configurable
 - Gestion DST automatique
 - Alertes Telegram

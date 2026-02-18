@@ -15,14 +15,16 @@
 //    - Test alert on startup to verify Telegram connection
 //    - Multi-symbol support (closes all trades on the account)
 //    - Detailed logging with P&L total
+//    - Automatic retry after 1 minute if broker refuses a close
 //
 //    Usage: Run on M5 timeframe or lower for accurate time detection
 //
 //    Author: J. Cornier
-//    Version: 1.1
-//    Last Updated: 2026-01-18
+//    Version: 1.2
+//    Last Updated: 2026-02-18
 //
 //    Changelog:
+//    - v1.2: Added post-close verification and automatic retry after 1 minute on broker refusal
 //    - v1.1: Added customizable Telegram alert name, added test alert on startup
 //    - v1.0: Initial release
 //
@@ -85,6 +87,13 @@ namespace cAlgo.Robots
         private DateTime lastClosingDate = DateTime.MinValue;
         private bool closingExecutedToday = false;
         private bool preAlertSentToday = false;
+
+        // Variables retry
+        private bool _retryPending = false;
+        private DateTime _retryClosingTime;
+        private int _totalPositionsClosed = 0;
+        private int _totalOrdersCancelled = 0;
+        private double _totalPnL = 0;
 
         protected override void OnStart()
         {
@@ -191,6 +200,39 @@ namespace cAlgo.Robots
             {
                 ExecuteClosing(currentTime);
             }
+        }
+
+        protected override void OnTimer()
+        {
+            Timer.Stop();
+
+            if (!_retryPending)
+                return;
+
+            _retryPending = false;
+
+            DateTime currentTime = GetCurrentTimeInTargetTimezone();
+
+            Print("═══════════════════════════════════════════════");
+            Print($"🔄 2ÈME TENTATIVE DE FERMETURE (après 1 minute)");
+            Print($"   Heure: {currentTime:HH:mm:ss} ({targetTimeZone.Id})");
+            Print("═══════════════════════════════════════════════");
+
+            int retryPositionsClosed = 0;
+            int retryOrdersCancelled = 0;
+            double retryPnL = 0;
+
+            CloseAllPositionsAndOrders(ref retryPositionsClosed, ref retryOrdersCancelled, ref retryPnL);
+
+            _totalPositionsClosed += retryPositionsClosed;
+            _totalOrdersCancelled += retryOrdersCancelled;
+            _totalPnL += retryPnL;
+
+            int remainingPositions = Positions.Count;
+            int remainingOrders = PendingOrders.Count;
+
+            PrintClosingSummary(_totalPositionsClosed, _totalOrdersCancelled, _totalPnL, currentTime, remainingPositions, remainingOrders);
+            SendClosingResultAlert(_retryClosingTime, _totalPositionsClosed, _totalOrdersCancelled, _totalPnL, remainingPositions, remainingOrders, isRetry: true);
         }
 
         private DateTime GetCurrentTimeInTargetTimezone()
@@ -317,6 +359,10 @@ namespace cAlgo.Robots
         private void ExecuteClosing(DateTime currentTime)
         {
             closingExecutedToday = true;
+            _totalPositionsClosed = 0;
+            _totalOrdersCancelled = 0;
+            _totalPnL = 0;
+            _retryClosingTime = currentTime;
 
             Print("═══════════════════════════════════════════════");
             Print($"⏰ FERMETURE AUTOMATIQUE DÉCLENCHÉE");
@@ -324,10 +370,36 @@ namespace cAlgo.Robots
             Print($"   DST: {(targetTimeZone.IsDaylightSavingTime(currentTime) ? "Heure d'été" : "Heure standard")}");
             Print("═══════════════════════════════════════════════");
 
-            int positionsClosed = 0;
-            int ordersCancelled = 0;
-            double totalPnL = 0;
+            // Aucune position ni ordre : rapport immédiat, pas de retry
+            if (Positions.Count == 0 && PendingOrders.Count == 0)
+            {
+                PrintClosingSummary(0, 0, 0, currentTime, 0, 0);
+                SendClosingResultAlert(currentTime, 0, 0, 0, 0, 0, isRetry: false);
+                return;
+            }
 
+            CloseAllPositionsAndOrders(ref _totalPositionsClosed, ref _totalOrdersCancelled, ref _totalPnL);
+
+            // Vérifier s'il reste des positions/ordres non fermés (refus broker)
+            int remainingPositions = Positions.Count;
+            int remainingOrders = PendingOrders.Count;
+
+            if (remainingPositions > 0 || remainingOrders > 0)
+            {
+                Print($"\n⚠️ POSITIONS/ORDRES NON FERMÉS: {remainingPositions} position(s), {remainingOrders} ordre(s)");
+                Print($"   Nouvelle tentative dans 1 minute...");
+                _retryPending = true;
+                Timer.Start(60);
+            }
+            else
+            {
+                PrintClosingSummary(_totalPositionsClosed, _totalOrdersCancelled, _totalPnL, currentTime, 0, 0);
+                SendClosingResultAlert(currentTime, _totalPositionsClosed, _totalOrdersCancelled, _totalPnL, 0, 0, isRetry: false);
+            }
+        }
+
+        private void CloseAllPositionsAndOrders(ref int positionsClosed, ref int ordersCancelled, ref double totalPnL)
+        {
             // Fermer toutes les positions
             var allPositions = Positions.ToArray();
             if (allPositions.Length > 0)
@@ -383,12 +455,26 @@ namespace cAlgo.Robots
                     }
                 }
             }
+        }
 
-            // Résumé
+        private void PrintClosingSummary(int positionsClosed, int ordersCancelled, double totalPnL,
+                                         DateTime currentTime, int remainingPositions, int remainingOrders)
+        {
             Print("\n═══════════════════════════════════════════════");
-            Print($"✅ FERMETURE TERMINÉE");
+
+            if (remainingPositions > 0 || remainingOrders > 0)
+            {
+                Print($"⚠️ FERMETURE INCOMPLÈTE - VÉRIFICATION REQUISE");
+                Print($"   Positions encore ouvertes: {remainingPositions}");
+                Print($"   Ordres encore en attente:  {remainingOrders}");
+            }
+            else
+            {
+                Print($"✅ FERMETURE TERMINÉE AVEC SUCCÈS");
+            }
+
             Print($"   Positions fermées: {positionsClosed}");
-            Print($"   Ordres annulés: {ordersCancelled}");
+            Print($"   Ordres annulés:    {ordersCancelled}");
 
             if (positionsClosed > 0)
             {
@@ -398,19 +484,24 @@ namespace cAlgo.Robots
 
             Print($"   Prochaine fermeture: {currentTime.Date.AddDays(1):yyyy-MM-dd} {CloseHour:D2}:{CloseMinutes:D2}");
             Print("═══════════════════════════════════════════════\n");
-
-            // Envoyer l'alerte Telegram avec le résultat
-            SendClosingResultAlert(currentTime, positionsClosed, ordersCancelled, totalPnL);
         }
 
-        private void SendClosingResultAlert(DateTime closingTime, int positionsClosed, int ordersCancelled, double totalPnL)
+        private void SendClosingResultAlert(DateTime closingTime, int positionsClosed, int ordersCancelled,
+                                            double totalPnL, int remainingPositions, int remainingOrders, bool isRetry)
         {
-            string message = $"🔒 *{TelegramAlertName} - Résultat d'Exécution*\n\n";
-            message += $"⏰ Fermeture effectuée à {closingTime:HH:mm:ss} ET\n";
-            message += $"📅 Date: {closingTime:yyyy-MM-dd}\n\n";
+            bool hasRemaining = remainingPositions > 0 || remainingOrders > 0;
+            string statusEmoji = hasRemaining ? "⚠️" : "🔒";
 
-            // Résumé des actions
-            if (positionsClosed == 0 && ordersCancelled == 0)
+            string message = $"{statusEmoji} *{TelegramAlertName} - Résultat d'Exécution*\n\n";
+            message += $"⏰ Fermeture effectuée à {closingTime:HH:mm:ss} ET\n";
+            message += $"📅 Date: {closingTime:yyyy-MM-dd}\n";
+
+            if (isRetry)
+                message += $"🔄 _Rapport après 2ème tentative_\n";
+
+            message += "\n";
+
+            if (positionsClosed == 0 && ordersCancelled == 0 && !hasRemaining)
             {
                 message += $"✅ *Aucune action requise*\n";
                 message += $"   • Aucune position ouverte\n";
@@ -429,16 +520,24 @@ namespace cAlgo.Robots
                 }
                 else
                 {
-                    message += $"   • Aucune position à fermer\n";
+                    message += $"   • Aucune position fermée\n";
                 }
 
                 if (ordersCancelled > 0)
-                {
                     message += $"   🚫 {ordersCancelled} ordre(s) annulé(s)\n";
+                else
+                    message += $"   • Aucun ordre annulé\n";
+
+                if (hasRemaining)
+                {
+                    message += $"\n🚨 *ATTENTION - Positions non clôturées:*\n";
+                    message += $"   • Positions encore ouvertes: {remainingPositions}\n";
+                    message += $"   • Ordres encore en attente: {remainingOrders}\n";
+                    message += $"   ⚠️ _Vérifiez votre compte manuellement_\n";
                 }
                 else
                 {
-                    message += $"   • Aucun ordre à annuler\n";
+                    message += $"\n✅ *Toutes les positions ont été clôturées*\n";
                 }
             }
 
