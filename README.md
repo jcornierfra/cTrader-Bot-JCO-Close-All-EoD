@@ -1,5 +1,7 @@
 # cTrader Bot - JCO Close All EoD
 
+![Telegram alerts preview](assets/telegram-alerts-preview.png)
+
 ## 📋 Description
 
 **JCO Close All EoD** est un cBot pour cTrader qui ferme automatiquement toutes les positions et annule tous les ordres en attente à une heure spécifique chaque jour.
