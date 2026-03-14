@@ -147,6 +147,10 @@ Si le broker refuse une fermeture (ex. marché fermé, requête rejetée) :
 
 ## 📝 Changelog
 
+### Version 1.3 _(2026-03-14)_
+
+- Affichage de l'equity du compte dans l'alerte Telegram de résultat d'exécution
+
 ### Version 1.2 _(2026-02-18)_
 
 - Vérification post-fermeture : contrôle que toutes les positions ont bien été clôturées

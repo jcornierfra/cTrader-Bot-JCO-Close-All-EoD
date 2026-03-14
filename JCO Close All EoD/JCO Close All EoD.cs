@@ -20,10 +20,11 @@
 //    Usage: Run on M5 timeframe or lower for accurate time detection
 //
 //    Author: J. Cornier
-//    Version: 1.2
-//    Last Updated: 2026-02-18
+//    Version: 1.3
+//    Last Updated: 2026-03-14
 //
 //    Changelog:
+//    - v1.3: Added account equity in the closing result Telegram alert
 //    - v1.2: Added post-close verification and automatic retry after 1 minute on broker refusal
 //    - v1.1: Added customizable Telegram alert name, added test alert on startup
 //    - v1.0: Initial release
@@ -540,6 +541,9 @@ namespace cAlgo.Robots
                     message += $"\n✅ *Toutes les positions ont été clôturées*\n";
                 }
             }
+
+            message += $"\n💼 *Compte:*\n";
+            message += $"   • Equity: {Account.Equity:F2} {Account.Asset.Name}\n";
 
             message += $"\n⏭️ Prochaine fermeture:\n";
             message += $"   {closingTime.Date.AddDays(1):yyyy-MM-dd} à {CloseHour:D2}:{CloseMinutes:D2} ET";
