@@ -20,10 +20,11 @@
 //    Usage: Run on M5 timeframe or lower for accurate time detection
 //
 //    Author: J. Cornier
-//    Version: 1.3
-//    Last Updated: 2026-03-14
+//    Version: 1.4
+//    Last Updated: 2026-05-01
 //
 //    Changelog:
+//    - v1.4: Telegram alerts now display the correct timezone label (EST/EDT, CET/CEST, GMT/BST, JST, AEST/AEDT…) instead of a hardcoded "ET"
 //    - v1.3: Added account equity in the closing result Telegram alert
 //    - v1.2: Added post-close verification and automatic retry after 1 minute on broker refusal
 //    - v1.1: Added customizable Telegram alert name, added test alert on startup
@@ -249,6 +250,21 @@ namespace cAlgo.Robots
             }
         }
 
+        private string GetTimeZoneLabel(DateTime time)
+        {
+            bool isDst = targetTimeZone.IsDaylightSavingTime(time);
+            switch (targetTimeZone.Id)
+            {
+                case "Eastern Standard Time": return isDst ? "EDT" : "EST";
+                case "GMT Standard Time": return isDst ? "BST" : "GMT";
+                case "Romance Standard Time": return isDst ? "CEST" : "CET";
+                case "W. Europe Standard Time": return isDst ? "CEST" : "CET";
+                case "Tokyo Standard Time": return "JST";
+                case "AUS Eastern Standard Time": return isDst ? "AEDT" : "AEST";
+                default: return targetTimeZone.Id;
+            }
+        }
+
         private bool IsPreAlertTime(DateTime currentTime)
         {
             // Calculer l'heure de l'alerte préventive (X minutes avant la fermeture)
@@ -284,7 +300,7 @@ namespace cAlgo.Robots
 
             string message = $"🤖 *{TelegramAlertName} - Alerte Opérationnelle*\n\n";
             message += $"✅ Le cBot est opérationnel\n";
-            message += $"⏰ Fermeture prévue dans {AlertBeforeClosingMinutes} minutes à {CloseHour:D2}:{CloseMinutes:D2} ET\n\n";
+            message += $"⏰ Fermeture prévue dans {AlertBeforeClosingMinutes} minutes à {CloseHour:D2}:{CloseMinutes:D2} {GetTimeZoneLabel(currentTime)}\n\n";
             message += $"📊 État actuel du compte:\n";
             message += $"   • Positions ouvertes: {positionsCount}\n";
             message += $"   • Ordres en attente: {pendingOrdersCount}\n";
@@ -494,7 +510,7 @@ namespace cAlgo.Robots
             string statusEmoji = hasRemaining ? "⚠️" : "🔒";
 
             string message = $"{statusEmoji} *{TelegramAlertName} - Résultat d'Exécution*\n\n";
-            message += $"⏰ Fermeture effectuée à {closingTime:HH:mm:ss} ET\n";
+            message += $"⏰ Fermeture effectuée à {closingTime:HH:mm:ss} {GetTimeZoneLabel(closingTime)}\n";
             message += $"📅 Date: {closingTime:yyyy-MM-dd}\n";
 
             if (isRetry)
@@ -546,7 +562,8 @@ namespace cAlgo.Robots
             message += $"   • Equity: {Account.Equity:F2} {Account.Asset.Name}\n";
 
             message += $"\n⏭️ Prochaine fermeture:\n";
-            message += $"   {closingTime.Date.AddDays(1):yyyy-MM-dd} à {CloseHour:D2}:{CloseMinutes:D2} ET";
+            DateTime nextClosing = closingTime.Date.AddDays(1).AddHours(CloseHour).AddMinutes(CloseMinutes);
+            message += $"   {nextClosing:yyyy-MM-dd} à {CloseHour:D2}:{CloseMinutes:D2} {GetTimeZoneLabel(nextClosing)}";
 
             SendTelegramMessage(message);
         }

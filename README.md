@@ -88,7 +88,7 @@ Si le broker refuse une fermeture (ex. marché fermé, requête rejetée) :
 🤖 JCO Close All EoD - Alerte Opérationnelle
 
 ✅ Le cBot est opérationnel
-⏰ Fermeture prévue dans 10 minutes à 16:50 ET
+⏰ Fermeture prévue dans 10 minutes à 16:50 EDT
 
 📊 État actuel du compte:
    • Positions ouvertes: 3
@@ -102,7 +102,7 @@ Si le broker refuse une fermeture (ex. marché fermé, requête rejetée) :
 ```text
 🔒 JCO Close All EoD - Résultat d'Exécution
 
-⏰ Fermeture effectuée à 16:50:05 ET
+⏰ Fermeture effectuée à 16:50:05 EST
 📅 Date: 2026-02-18
 
 📊 Actions effectuées:
@@ -113,7 +113,7 @@ Si le broker refuse une fermeture (ex. marché fermé, requête rejetée) :
 ✅ Toutes les positions ont été clôturées
 
 ⏭️ Prochaine fermeture:
-   2026-02-19 à 16:50 ET
+   2026-02-19 à 16:50 EST
 ```
 
 ### Alerte de résultat — Positions restantes après retry
@@ -121,7 +121,7 @@ Si le broker refuse une fermeture (ex. marché fermé, requête rejetée) :
 ```text
 ⚠️ JCO Close All EoD - Résultat d'Exécution
 
-⏰ Fermeture effectuée à 16:50:05 ET
+⏰ Fermeture effectuée à 16:50:05 EST
 📅 Date: 2026-02-18
 🔄 Rapport après 2ème tentative
 
@@ -136,7 +136,7 @@ Si le broker refuse une fermeture (ex. marché fermé, requête rejetée) :
    ⚠️ Vérifiez votre compte manuellement
 
 ⏭️ Prochaine fermeture:
-   2026-02-19 à 16:50 ET
+   2026-02-19 à 16:50 EST
 ```
 
 ## ⚠️ Important
@@ -146,6 +146,10 @@ Si le broker refuse une fermeture (ex. marché fermé, requête rejetée) :
 - Testez d'abord en compte démo !
 
 ## 📝 Changelog
+
+### Version 1.4 _(2026-05-01)_
+
+- Affichage du label de fuseau horaire correct dans les alertes Telegram (EST/EDT, CET/CEST, GMT/BST, JST, AEST/AEDT…) au lieu d'un « ET » codé en dur
 
 ### Version 1.3 _(2026-03-14)_
 
